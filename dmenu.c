@@ -618,6 +618,13 @@ insert:
 		break;
 	case XK_Return:
 	case XK_KP_Enter:
+		if (restrict_return) {
+			if (!sel || ev->state & (ShiftMask | ControlMask))
+				break;
+			puts(sel->text);
+			cleanup();
+			exit(0);
+		}
 		puts((sel && !(ev->state & ShiftMask)) ? sel->text : text);
 		if (!(ev->state & ControlMask)) {
 			cleanup();
@@ -884,7 +891,9 @@ main(int argc, char *argv[])
 		else if (!strcmp(argv[i], "-i")) { /* case-insensitive item matching */
 			fstrncmp = strncasecmp;
 			fstrstr = cistrstr;
-		} else if (!strcmp(argv[i], "-P"))   /* is the input a password */
+		} else if (!strcmp(argv[i], "-r"))  /* restricted return */
+			restrict_return = 1;
+		else if (!strcmp(argv[i], "-P"))   /* is the input a password */
 			passwd = 1;
 		else if (i + 1 == argc)
 			usage();
