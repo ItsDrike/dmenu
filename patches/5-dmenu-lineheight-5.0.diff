@@ -1,0 +1,120 @@
+From fcb2edb54c0999d94d2af62b36e181094e338cca Mon Sep 17 00:00:00 2001
+From: ItsDrike <itsdrike@protonmail.com>
+Date: Sat, 30 Jul 2022 10:11:21 +0200
+Subject: [PATCH] Apply dmenu-lineheight
+
+---
+ config.def.h |  3 +++
+ config.h     |  3 +++
+ dmenu.1      |  5 +++++
+ dmenu.c      | 15 ++++++++++-----
+ 4 files changed, 21 insertions(+), 5 deletions(-)
+
+diff --git a/config.def.h b/config.def.h
+index c0ba01e..cbcd823 100644
+--- a/config.def.h
++++ b/config.def.h
+@@ -21,6 +21,9 @@ static const char *colors[SchemeLast][2] = {
+ };
+ /* -l option; if nonzero, dmenu uses vertical list with given number of lines */
+ static unsigned int lines      = 0;
++/* -h option; minimum height of a menu line */
++static unsigned int lineheight = 0;
++static unsigned int min_lineheight = 8;
+ 
+ /*
+  * Characters not considered part of a word while deleting words
+diff --git a/config.h b/config.h
+index d882408..6b4bede 100644
+--- a/config.h
++++ b/config.h
+@@ -22,6 +22,9 @@ static const char *colors[SchemeLast][2] = {
+ };
+ /* -l option; if nonzero, dmenu uses vertical list with given number of lines */
+ static unsigned int lines      = 0;
++/* -h option; minimum height of a menu line */
++static unsigned int lineheight = 0;
++static unsigned int min_lineheight = 8;
+ 
+ /*
+  * Characters not considered part of a word while deleting words
+diff --git a/dmenu.1 b/dmenu.1
+index c036baa..c80cd20 100644
+--- a/dmenu.1
++++ b/dmenu.1
+@@ -6,6 +6,8 @@ dmenu \- dynamic menu
+ .RB [ \-bfiv ]
+ .RB [ \-l
+ .IR lines ]
++.RB [ \-h
++.IR height ]
+ .RB [ \-m
+ .IR monitor ]
+ .RB [ \-p
+@@ -53,6 +55,9 @@ dmenu matches menu items case insensitively.
+ .BI \-l " lines"
+ dmenu lists items vertically, with the given number of lines.
+ .TP
++.BI \-h " height"
++dmenu uses a menu line of at least 'height' pixels tall, but no less than 8.
++.TP
+ .BI \-m " monitor"
+ dmenu is displayed on the monitor number supplied. Monitor numbers are starting
+ from 0.
+diff --git a/dmenu.c b/dmenu.c
+index 7b8d298..93aa1cd 100644
+--- a/dmenu.c
++++ b/dmenu.c
+@@ -238,7 +238,7 @@ drawmenu(void)
+ {
+ 	unsigned int curpos;
+ 	struct item *item;
+-	int x = 0, y = 0, w;
++	int x = 0, y = 0, fh = drw->fonts->h, w;
+ 
+ 	drw_setscheme(drw, scheme[SchemeNorm]);
+ 	drw_rect(drw, 0, 0, mw, mh, 1, 1);
+@@ -255,7 +255,7 @@ drawmenu(void)
+ 	curpos = TEXTW(text) - TEXTW(&text[cursor]);
+ 	if ((curpos += lrpad / 2 - 1) < w) {
+ 		drw_setscheme(drw, scheme[SchemeNorm]);
+-		drw_rect(drw, x + curpos, 2, 2, bh - 4, 1, 0);
++		drw_rect(drw, x + curpos, 2 + (bh - fh) / 2, 2, fh - 4, 1, 0);
+ 	}
+ 
+ 	if (lines > 0) {
+@@ -731,6 +731,7 @@ setup(void)
+ 
+ 	/* calculate menu geometry */
+ 	bh = drw->fonts->h + 2;
++	bh = MAX(bh, lineheight);	/* make a menu line AT LEAST 'linegeight' tall */
+ 	lines = MAX(lines, 0);
+ 	mh = (lines + 1) * bh;
+ 	promptw = (prompt && *prompt) ? TEXTW(prompt) - lrpad / 4 : 0;
+@@ -825,9 +826,9 @@ setup(void)
+ static void
+ usage(void)
+ {
+-	fputs("usage: dmenu [-bfiv] [-l lines] [-p prompt] [-fn font] [-m monitor]\n"
+-	      "             [-nb color] [-nf color] [-sb color] [-sf color] [-w windowid]\n"
+-	      "             [-hb color] [-hf color] [-hp items]\n", stderr);
++	fputs("usage: dmenu [-bfiv] [-l lines] [-h height] [-p prompt] [-fn font] \n"
++	      " 	    [-m monitor] [-nb color] [-nf color] [-sb color] [-sf color]\n"
++	      "[-w windowid] [-hb color] [-hf color] [-hp items]\n", stderr);
+ 	exit(1);
+ }
+ 
+@@ -856,6 +857,10 @@ main(int argc, char *argv[])
+ 		/* these options take one argument */
+ 		else if (!strcmp(argv[i], "-l"))   /* number of lines in vertical list */
+ 			lines = atoi(argv[++i]);
++		else if (!strcmp(argv[i], "-h")) { /* minimum height of one menu line */
++			lineheight = atoi(argv[++i]);
++			lineheight = MAX(lineheight, min_lineheight);
++		}
+ 		else if (!strcmp(argv[i], "-m"))
+ 			mon = atoi(argv[++i]);
+ 		else if (!strcmp(argv[i], "-p"))   /* adds prompt to left of input field */
+-- 
+2.37.1
+
